@@ -1,0 +1,32 @@
+global:
+  scrape_interval: 5s
+
+scrape_configs:
+  # Scrape OTEL Collector metrics
+  - job_name: 'otel-collector'
+    static_configs:
+      - targets: ['otel-collector:9464']
+
+  # Scrape API Gateway
+  - job_name: 'api-gateway'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['api-gateway:8084']
+
+  # Scrape User Service
+  - job_name: 'user-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['user-service:8081']
+
+  # Scrape Chat Service
+  - job_name: 'chat-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['chat-service:8082']
+
+  # Scrape Eureka Server
+  - job_name: 'eureka-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['eureka-service:8761']
