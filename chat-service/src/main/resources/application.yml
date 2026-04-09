@@ -7,6 +7,13 @@ spring:
 
   kafka:
     bootstrap-servers: localhost:9092
+    consumer:
+      group-id: chat-service-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: 'com.paris.common.dto'
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
@@ -23,6 +30,17 @@ spring:
     hibernate:
       ddl-auto: update
     show-sql: true
+
+# Required so WebSockets are allowed through Spring Boot
+#  web:
+#    socket:
+#      enabled: true
+
+# ✅ FIX #3 — EXPOSE /ws/chat FOR WEBFLUX WEBSOCKET
+  webflux:
+    websocket:
+      mapping:
+        /ws/chat: chatWebSocketHandler
 
 eureka:
   client:

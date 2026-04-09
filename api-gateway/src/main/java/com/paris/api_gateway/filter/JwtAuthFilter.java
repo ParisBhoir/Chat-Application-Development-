@@ -28,7 +28,11 @@ public class JwtAuthFilter implements WebFilter {
         log.debug("Incoming request path: {}", path);
 
         // 1️⃣ Allow public endpoints
-        if (path.startsWith("/api/auth") || path.startsWith("/actuator")) {
+       /* // Allow auth & WebSocket upgrade requests
+        String upgrade = exchange.getRequest().getHeaders().getFirst("Upgrade");
+        String connection = exchange.getRequest().getHeaders().getFirst("Connection");*/
+        if (path.startsWith("/api/auth") || path.startsWith("/actuator") /*|| path.startsWith("/ws")*/
+                /*"websocket".equalsIgnoreCase(upgrade) || (connection != null && connection.toLowerCase().contains("upgrade"))*/) {
             return chain.filter(exchange);
         }
 
@@ -51,8 +55,9 @@ public class JwtAuthFilter implements WebFilter {
 
             String username = claims.getSubject();
             String role = (String) claims.get("role");
+            String userId = (String) claims.getId();
 
-            log.info("Authenticated user: {} with role: {}", username, role);
+            log.info("Authenticated user: {} with role: {}", userId, role);
 
             // 3️⃣ Role-based access control (RBAC)
             if (path.startsWith("/api/users") && !"ADMIN".equalsIgnoreCase(role)) {
@@ -70,10 +75,12 @@ public class JwtAuthFilter implements WebFilter {
 
             // 4️⃣ Pass user details downstream for auditing or personalization
             ServerHttpRequest mutatedRequest = exchange.getRequest().mutate()
+                    .header("X-User-Id", userId)
                     .header("X-User-Name", username)
                     .header("X-User-Role", role)
                     .build();
-
+            log.info("Forwarding headers: X-User-Name={}", username);
+            log.info("Forwarding headers: X-User-Id={}", userId);
             return chain.filter(exchange.mutate().request(mutatedRequest).build());
 
         } catch (Exception e) {

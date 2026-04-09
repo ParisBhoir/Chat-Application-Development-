@@ -12,6 +12,9 @@ spring:
           enabled: true
           lower-case-service-id: true
 
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+
       routes:
         - id: user-service
           uri: lb://USER-SERVICE
@@ -22,6 +25,13 @@ spring:
           uri: lb://CHAT-SERVICE
           predicates:
             - Path=/api/chat/**
+
+        - id: chat-ws
+          uri: ws://chat-service:8082
+          predicates:
+              - Path=/ws/chat
+          filters:
+            - RemoveRequestHeader=Sec-WebSocket-Protocol
 
 eureka:
   client:
