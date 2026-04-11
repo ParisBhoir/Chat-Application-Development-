@@ -1,5 +1,7 @@
 package com.paris.common.dto;
 
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -17,5 +19,7 @@ public class MessageDTO {
     private String receiverId;
     private String content;
     private LocalDateTime timestamp;
-    private boolean seen;
+//    private boolean seen;
+    @Enumerated(EnumType.STRING)
+    private MessageStatus status;
 }

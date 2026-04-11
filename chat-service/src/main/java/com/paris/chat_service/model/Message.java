@@ -1,5 +1,6 @@
 package com.paris.chat_service.model;
 
+import com.paris.common.dto.MessageStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -20,5 +21,7 @@ public class Message {
     private String receiverId;
     private String content;
     private LocalDateTime timestamp;
-    private boolean seen = false;
+//    private boolean seen = false;
+    @Enumerated(EnumType.STRING)
+    private MessageStatus status;
 }

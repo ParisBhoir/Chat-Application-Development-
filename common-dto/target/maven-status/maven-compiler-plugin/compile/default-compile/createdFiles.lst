@@ -1,2 +1,3 @@
 com\paris\common\dto\MessageDTO.class
 com\paris\common\dto\MessageDTO$MessageDTOBuilder.class
+com\paris\common\dto\MessageStatus.class

@@ -4,6 +4,7 @@ import com.paris.chat_service.kafka.MessageProducer;
 import com.paris.chat_service.model.Message;
 import com.paris.common.dto.MessageDTO;
 import com.paris.chat_service.repository.MessageRepository;
+import com.paris.common.dto.MessageStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -28,12 +29,20 @@ public class ChatService {
                 .receiverId(saved.getReceiverId())
                 .content(saved.getContent())
                 .timestamp(saved.getTimestamp())
-                .seen(saved.isSeen())
+                .status(saved.getStatus())
                 .build();
         // publish to Kafka
         messageProducer.sendMessageEvent(dto);
 
         return saved;
+    }
+
+    public void updateMessageStatus(Long messageId, MessageStatus status) {
+        Message message = messageRepository.findById(messageId)
+                .orElseThrow();
+
+        message.setStatus(status);
+        messageRepository.save(message);
     }
 
     public List<Message> getChatHistory(String senderId, String receiverId) {
