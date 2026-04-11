@@ -50,5 +50,14 @@ public class SessionRegistry {
                     .subscribe();
         });
     }
+
+    public void sendToUser(String userId, String message) {
+        WebSocketSession session = sessions.get(userId);
+
+        if (session != null && session.isOpen()) {
+            session.send(Mono.just(session.textMessage(message)))
+                    .subscribe();
+        }
+    }
 }
 
