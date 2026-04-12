@@ -16,6 +16,7 @@ import org.springframework.web.reactive.socket.WebSocketSession;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -23,7 +24,7 @@ public class ChatWebSocketHandler implements WebSocketHandler {
     private static final Logger log = LoggerFactory.getLogger(ChatWebSocketHandler.class);
     private final SessionRegistry sessionRegistry;
     private final ChatService chatService;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
 
     @Override
     public Mono<Void> handle(WebSocketSession session) {
@@ -35,6 +36,37 @@ public class ChatWebSocketHandler implements WebSocketHandler {
         }
 
         sessionRegistry.register(userId, session);
+        List<Message> pendingMessages = chatService.getUndeliveredMessages(userId);
+
+        log.info("Found {} undelivered messages for {}", pendingMessages.size(), userId);
+
+        pendingMessages.forEach(message -> {
+            try {
+                String json = objectMapper.writeValueAsString(message);
+
+                session.send(Mono.just(session.textMessage(json))).subscribe();
+
+                // ✅ mark delivered
+                chatService.updateMessageStatus(message.getId(), MessageStatus.DELIVERED);
+
+                // ✅ notify sender
+                MessageStatusEventDTO statusEvent = new MessageStatusEventDTO(
+                        "STATUS",
+                        message.getId(),
+                        message.getSenderId(),
+                        message.getReceiverId(),
+                        MessageStatus.DELIVERED
+                );
+
+                sessionRegistry.sendToUser(
+                        message.getSenderId(),
+                        objectMapper.writeValueAsString(statusEvent)
+                );
+
+            } catch (Exception e) {
+                log.error("Failed to deliver offline message", e);
+            }
+        });
         PresenceEventDTO event = new PresenceEventDTO(
                 "PRESENCE",
                 PresenceStatus.ONLINE,

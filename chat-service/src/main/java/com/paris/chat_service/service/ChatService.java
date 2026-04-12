@@ -49,4 +49,7 @@ public class ChatService {
         return messageRepository.findChatHistory(senderId, receiverId);
     }
 
+    public List<Message> getUndeliveredMessages(String userId) {
+        return messageRepository.findByReceiverIdAndStatus(userId, MessageStatus.SENT);
+    }
 }
