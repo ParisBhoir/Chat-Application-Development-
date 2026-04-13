@@ -50,6 +50,6 @@ public class ChatService {
     }
 
     public List<Message> getUndeliveredMessages(String userId) {
-        return messageRepository.findByReceiverIdAndStatus(userId, MessageStatus.SENT);
+        return messageRepository.findByReceiverIdAndStatus(userId, MessageStatus.PENDING);
     }
 }

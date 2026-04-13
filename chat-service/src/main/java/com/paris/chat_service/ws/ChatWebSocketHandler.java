@@ -47,7 +47,7 @@ public class ChatWebSocketHandler implements WebSocketHandler {
                 session.send(Mono.just(session.textMessage(json))).subscribe();
 
                 // ✅ mark delivered
-                chatService.updateMessageStatus(message.getId(), MessageStatus.DELIVERED);
+                chatService.updateMessageStatus(message.getId(), MessageStatus.SENT);
 
                 // ✅ notify sender
                 MessageStatusEventDTO statusEvent = new MessageStatusEventDTO(
@@ -55,7 +55,7 @@ public class ChatWebSocketHandler implements WebSocketHandler {
                         message.getId(),
                         message.getSenderId(),
                         message.getReceiverId(),
-                        MessageStatus.DELIVERED
+                        MessageStatus.SENT
                 );
 
                 sessionRegistry.sendToUser(
@@ -102,9 +102,10 @@ public class ChatWebSocketHandler implements WebSocketHandler {
                                         .receiverId(dto.getReceiverId())
                                         .content(dto.getContent())
                                         .timestamp(LocalDateTime.now())
-                                        .status(MessageStatus.SENT)
+                                        .status(MessageStatus.PENDING)
                                         .build();
                                 chatService.sendMessage(m);
+                                break;
 
                             case "TYPING":
                                 TypingEventDTO typingEvent = objectMapper.treeToValue(node, TypingEventDTO.class);
@@ -127,7 +128,32 @@ public class ChatWebSocketHandler implements WebSocketHandler {
                                         statusEvent.getSenderId(),
                                         objectMapper.writeValueAsString(statusEvent)
                                 );
+                                break;
 
+                            case "ACK":
+                                AckEventDTO ack = objectMapper.treeToValue(node, AckEventDTO.class);
+
+                                log.info("ACK received for message {} from {}", ack.getMessageId(), userId);
+
+                                // Update DB → mark delivered
+                                chatService.updateMessageStatus(
+                                        ack.getMessageId(),
+                                        com.paris.common.dto.MessageStatus.DELIVERED
+                                );
+
+                                // Notify sender
+                                MessageStatusEventDTO ackStatusEvent = new MessageStatusEventDTO(
+                                        "STATUS",
+                                        ack.getMessageId(),
+                                        ack.getSenderId(),
+                                        ack.getReceiverId(),
+                                        com.paris.common.dto.MessageStatus.DELIVERED
+                                );
+
+                                sessionRegistry.sendToUser(
+                                        ack.getSenderId(),
+                                        objectMapper.writeValueAsString(ackStatusEvent)
+                                );
                             default:
                                 log.warn("Unknown WS event type: {}", type);
                         }

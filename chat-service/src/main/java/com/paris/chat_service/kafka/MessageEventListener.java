@@ -48,7 +48,7 @@ public class MessageEventListener {
                                         dto.getId(),
                                         dto.getSenderId(),
                                         dto.getReceiverId(),
-                                        MessageStatus.DELIVERED
+                                        MessageStatus.SENT
                                 );
 
                                 sessionRegistry.sendToUser(
