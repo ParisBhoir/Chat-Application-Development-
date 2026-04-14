@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Repository
@@ -18,5 +19,11 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
     List<Message> findChatHistory(String senderId, String receiverId);
 
     List<Message> findByReceiverIdAndStatus(String receiverId, MessageStatus status);
+
+    List<Message> findByStatusAndRetryCountLessThanAndLastAttemptAtBefore(
+            MessageStatus status,
+            int retryCount,
+            LocalDateTime time
+    );
 }
 

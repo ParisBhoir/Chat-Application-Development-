@@ -24,4 +24,8 @@ public class Message {
 //    private boolean seen = false;
     @Enumerated(EnumType.STRING)
     private MessageStatus status;
+
+    private int retryCount = 0;
+    private LocalDateTime lastAttemptAt;
+    private boolean failed;
 }

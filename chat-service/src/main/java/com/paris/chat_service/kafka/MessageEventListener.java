@@ -36,11 +36,12 @@ public class MessageEventListener {
                 String json = mapper.writeValueAsString(dto);
 
                 session.send(Mono.just(session.textMessage(json)))
-                        .doOnSuccess(unused -> {
+//                        .doOnSuccess(unused -> {
+                        .then(Mono.fromRunnable(() -> {
                             log.info("Message delivered to user {}", dto.getReceiverId());
 
                             // ✅ mark delivered AFTER send attempt
-                            chatService.updateMessageStatus(dto.getId(), MessageStatus.DELIVERED);
+                            chatService.updateMessageStatus(dto.getId(), MessageStatus.SENT);
 
                             try {
                                 MessageStatusEventDTO statusEvent = new MessageStatusEventDTO(
@@ -59,7 +60,7 @@ public class MessageEventListener {
                                 log.error("Failed to notify sender about delivery", e);
                             }
 
-                        })
+                        }))
                         .doOnError(err -> log.error("WebSocket send failed", err))
                         .subscribe();
 //                        .subscribe(null,

@@ -40,7 +40,7 @@ public class ChatService {
     public void updateMessageStatus(Long messageId, MessageStatus status) {
         Message message = messageRepository.findById(messageId)
                 .orElseThrow();
-
+        message.setLastAttemptAt(LocalDateTime.now());
         message.setStatus(status);
         messageRepository.save(message);
     }
@@ -51,5 +51,27 @@ public class ChatService {
 
     public List<Message> getUndeliveredMessages(String userId) {
         return messageRepository.findByReceiverIdAndStatus(userId, MessageStatus.PENDING);
+    }
+
+    public List<Message> findMessagesForRetry(LocalDateTime threshold) {
+        return messageRepository
+                .findByStatusAndRetryCountLessThanAndLastAttemptAtBefore(
+                        MessageStatus.SENT,
+                        4,
+                        threshold
+                );
+    }
+
+    public void incrementRetry(Long messageId){
+        Message message = messageRepository.findById(messageId)
+                .orElseThrow();
+        message.setLastAttemptAt(LocalDateTime.now());
+        message.setRetryCount(message.getRetryCount()+1);
+        messageRepository.save(message);
+    }
+
+    public void moveToDLQ(Message msg) {
+        msg.setFailed(true);
+        messageRepository.save(msg);
     }
 }
