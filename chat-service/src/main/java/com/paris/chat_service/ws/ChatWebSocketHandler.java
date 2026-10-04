@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.paris.chat_service.dto.*;
 import com.paris.chat_service.model.Message;
+import com.paris.chat_service.redis.RedisPresencePublisher;
 import com.paris.chat_service.redis.RedisSessionRegistry;
 import com.paris.chat_service.redis.InstanceIdProvider;
 import com.paris.chat_service.service.ChatService;
@@ -33,6 +34,7 @@ public class ChatWebSocketHandler implements WebSocketHandler {
     private final ObjectMapper objectMapper;
     private final RedisSessionRegistry redisSessionRegistry;
     private final InstanceIdProvider instanceIdProvider;
+    private final RedisPresencePublisher redisPresencePublisher;
 
     @Override
     public Mono<Void> handle(WebSocketSession session) {
@@ -46,7 +48,7 @@ public class ChatWebSocketHandler implements WebSocketHandler {
         sessionRegistry.register(userId, session);
         redisSessionRegistry.register(userId, instanceIdProvider.getInstanceId()).subscribe();
         log.info("Instance ID: {}", instanceIdProvider.getInstanceId());
-        PresenceEventDTO event = new PresenceEventDTO(
+        /*PresenceEventDTO event = new PresenceEventDTO(
                 "PRESENCE",
                 PresenceStatus.ONLINE,
                 userId
@@ -56,6 +58,23 @@ public class ChatWebSocketHandler implements WebSocketHandler {
             sessionRegistry.broadcast(objectMapper.writeValueAsString(event));
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
+        }*/
+        PresenceEventDTO event = new PresenceEventDTO(
+                "PRESENCE",
+                PresenceStatus.ONLINE,
+                userId
+        );
+
+        try {
+            String presenceMessage = objectMapper.writeValueAsString(event);
+
+            redisPresencePublisher.publish(presenceMessage)
+                    .subscribe();
+
+            log.info("Published ONLINE presence for user {}", userId);
+
+        } catch (JsonProcessingException e) {
+            log.error("Failed to create ONLINE presence event", e);
         }
         log.info("WebSocket connected: {}", userId);
 
@@ -222,7 +241,7 @@ public class ChatWebSocketHandler implements WebSocketHandler {
                 .doFinally(sig -> {
             sessionRegistry.unregister(userId);
             redisSessionRegistry.unregister(userId).subscribe();
-            PresenceEventDTO event1 = new PresenceEventDTO(
+            /*PresenceEventDTO event1 = new PresenceEventDTO(
                     "PRESENCE",
                     PresenceStatus.OFFLINE,
                     userId
@@ -232,7 +251,26 @@ public class ChatWebSocketHandler implements WebSocketHandler {
                 sessionRegistry.broadcast(objectMapper.writeValueAsString(event1));
             } catch (JsonProcessingException e) {
                 throw new RuntimeException(e);
+            }*/
+
+            PresenceEventDTO event1 = new PresenceEventDTO(
+                    "PRESENCE",
+                    PresenceStatus.OFFLINE,
+                    userId
+            );
+
+            try {
+                String presenceMessage = objectMapper.writeValueAsString(event1);
+
+                redisPresencePublisher.publish(presenceMessage)
+                        .subscribe();
+
+                log.info("Published OFFLINE presence for user {}", userId);
+
+            } catch (JsonProcessingException e) {
+                log.error("Failed to create OFFLINE presence event", e);
             }
+
             log.info("WebSocket disconnected: {}", userId);
         });
     }

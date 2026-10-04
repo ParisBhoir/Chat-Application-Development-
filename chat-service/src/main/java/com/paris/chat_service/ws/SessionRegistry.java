@@ -127,5 +127,25 @@ public class SessionRegistry {
             log.warn("No local WebSocket session for user {}", userId);
         }
     }
+
+    public void broadcastExcept(String excludedUserId, String message) {
+
+        sessions.forEach((userId, session) -> {
+
+            if (!userId.equals(excludedUserId)
+                    && session.isOpen()) {
+
+                session.send(
+                        Mono.just(session.textMessage(message))
+                ).subscribe();
+
+                log.info(
+                        "Presence delivered locally | user={} | excludedUser={}",
+                        userId,
+                        excludedUserId
+                );
+            }
+        });
+    }
 }
 
