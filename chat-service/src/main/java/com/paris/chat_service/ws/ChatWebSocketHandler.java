@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.paris.chat_service.dto.*;
 import com.paris.chat_service.model.Message;
+import com.paris.chat_service.redis.RedisSessionRegistry;
+import com.paris.chat_service.redis.InstanceIdProvider;
 import com.paris.chat_service.service.ChatService;
 import com.paris.common.dto.MessageStatus;
 import lombok.RequiredArgsConstructor;
@@ -12,11 +14,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.socket.WebSocketHandler;
+import org.springframework.web.reactive.socket.WebSocketMessage;
 import org.springframework.web.reactive.socket.WebSocketSession;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
 import java.util.List;
+
+import static com.netflix.appinfo.AmazonInfo.MetaDataKey.instanceId;
 
 @Component
 @RequiredArgsConstructor
@@ -25,6 +31,8 @@ public class ChatWebSocketHandler implements WebSocketHandler {
     private final SessionRegistry sessionRegistry;
     private final ChatService chatService;
     private final ObjectMapper objectMapper;
+    private final RedisSessionRegistry redisSessionRegistry;
+    private final InstanceIdProvider instanceIdProvider;
 
     @Override
     public Mono<Void> handle(WebSocketSession session) {
@@ -36,6 +44,21 @@ public class ChatWebSocketHandler implements WebSocketHandler {
         }
 
         sessionRegistry.register(userId, session);
+        redisSessionRegistry.register(userId, instanceIdProvider.getInstanceId()).subscribe();
+        log.info("Instance ID: {}", instanceIdProvider.getInstanceId());
+        PresenceEventDTO event = new PresenceEventDTO(
+                "PRESENCE",
+                PresenceStatus.ONLINE,
+                userId
+        );
+
+        try {
+            sessionRegistry.broadcast(objectMapper.writeValueAsString(event));
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+        log.info("WebSocket connected: {}", userId);
+
         List<Message> pendingMessages = chatService.getUndeliveredMessages(userId);
 
         log.info("Found {} undelivered messages for {}", pendingMessages.size(), userId);
@@ -67,19 +90,39 @@ public class ChatWebSocketHandler implements WebSocketHandler {
                 log.error("Failed to deliver offline message", e);
             }
         });
-        PresenceEventDTO event = new PresenceEventDTO(
-                "PRESENCE",
-                PresenceStatus.ONLINE,
-                userId
-        );
+        /*Mono<Void> outboundPending = Mono.defer(() -> {
+            List<Message> pendingMessages = chatService.getUndeliveredMessages(userId);
 
-        try {
-            sessionRegistry.broadcast(objectMapper.writeValueAsString(event));
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
-        log.info("WebSocket connected: {}", userId);
+            log.info("Found {} undelivered messages for {}", pendingMessages.size(), userId);
 
+            return session.send(
+                    Flux.fromIterable(pendingMessages)
+                            .map(msg -> {
+                                try {
+                                    // ✅ mark delivered
+                                    chatService.updateMessageStatus(msg.getId(), MessageStatus.SENT);
+
+                                    // ✅ notify sender
+                                    MessageStatusEventDTO statusEvent = new MessageStatusEventDTO(
+                                            "STATUS",
+                                            msg.getId(),
+                                            msg.getSenderId(),
+                                            msg.getReceiverId(),
+                                            MessageStatus.SENT
+                                    );
+
+                                    sessionRegistry.sendToUser(
+                                            msg.getSenderId(),
+                                            objectMapper.writeValueAsString(statusEvent)
+                                    );
+                                    return session.textMessage(objectMapper.writeValueAsString(msg));
+                                } catch (Exception e) {
+                                    throw new RuntimeException(e);
+                                }
+                            })
+            );
+        });*/
+        Flux<WebSocketMessage> outbound = Flux.never();
         Mono<Void> inbound = session.receive()
                 .flatMap(msg -> {
                     String payload = msg.getPayloadAsText();
@@ -154,6 +197,8 @@ public class ChatWebSocketHandler implements WebSocketHandler {
                                         ack.getSenderId(),
                                         objectMapper.writeValueAsString(ackStatusEvent)
                                 );
+                                break;
+
                             default:
                                 log.warn("Unknown WS event type: {}", type);
                         }
@@ -170,8 +215,13 @@ public class ChatWebSocketHandler implements WebSocketHandler {
                 .then();
 
         // cleanup on termination
-        return inbound.doFinally(sig -> {
+        return session.send(outbound) // keeps connection alive
+                .and(inbound)
+//        inbound.doFinally(sig -> {
+//        return Mono.when(inbound, outboundPending)
+                .doFinally(sig -> {
             sessionRegistry.unregister(userId);
+            redisSessionRegistry.unregister(userId).subscribe();
             PresenceEventDTO event1 = new PresenceEventDTO(
                     "PRESENCE",
                     PresenceStatus.OFFLINE,
@@ -184,6 +234,6 @@ public class ChatWebSocketHandler implements WebSocketHandler {
                 throw new RuntimeException(e);
             }
             log.info("WebSocket disconnected: {}", userId);
-        }).then();
+        });
     }
 }

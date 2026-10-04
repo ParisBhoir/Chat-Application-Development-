@@ -1,0 +1,48 @@
+package com.paris.chat_service.redis;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.paris.chat_service.ws.SessionRegistry;
+import jakarta.annotation.PostConstruct;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.data.redis.listener.ChannelTopic;
+import org.springframework.data.redis.listener.ReactiveRedisMessageListenerContainer;
+import org.springframework.stereotype.Component;
+
+@Component
+@RequiredArgsConstructor
+@Slf4j
+@ConditionalOnBean(ReactiveRedisMessageListenerContainer.class)
+public class RedisMessageSubscriber {
+
+    private final SessionRegistry sessionRegistry;
+    private final ObjectMapper mapper;
+    private final ReactiveRedisMessageListenerContainer container;
+
+    @PostConstruct
+    public void subscribe() {
+
+        container.receive(ChannelTopic.of("ws:messages"))
+                .map(message -> message.getMessage())
+                .subscribe(msg -> {
+                    try {
+                        JsonNode node = mapper.readTree(msg);
+                        String receiverId = node.get("receiverId").asText();
+                        log.info(
+                                "Redis message received for user {}",
+                                receiverId
+                        );
+                        sessionRegistry.sendToLocalUser(
+                                receiverId,
+                                msg
+                        );
+//                        sessionRegistry.sendToUser(receiverId, msg);
+
+                    } catch (Exception e) {
+                        log.error("Redis subscriber error", e);
+                    }
+                });
+    }
+}

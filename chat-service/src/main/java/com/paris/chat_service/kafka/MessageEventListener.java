@@ -31,6 +31,10 @@ public class MessageEventListener {
             log.info("Received Kafka message event: {}", dto);
 
             WebSocketSession session = sessionRegistry.get(dto.getReceiverId());
+            if (session == null) {
+                log.info("User not connected to THIS instance, skipping...");
+                return;
+            }
             if (session != null && session.isOpen()) {
 
                 String json = mapper.writeValueAsString(dto);

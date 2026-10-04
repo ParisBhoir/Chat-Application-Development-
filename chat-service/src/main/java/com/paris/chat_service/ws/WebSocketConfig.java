@@ -1,6 +1,7 @@
 package com.paris.chat_service.ws;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.reactive.HandlerMapping;
@@ -12,6 +13,7 @@ import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 
 import java.util.Map;
 
+@Slf4j
 @Configuration
 @RequiredArgsConstructor
 public class WebSocketConfig {
@@ -20,6 +22,7 @@ public class WebSocketConfig {
 
     @Bean
     public HandlerMapping webSocketMapping() {
+        log.info("WebSocket mapping initialized at /ws/chat");
         SimpleUrlHandlerMapping mapping = new SimpleUrlHandlerMapping();
 
         mapping.setUrlMap(Map.of(

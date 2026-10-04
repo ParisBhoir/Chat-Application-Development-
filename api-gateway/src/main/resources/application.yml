@@ -6,11 +6,18 @@ spring:
     name: api-gateway
 
   cloud:
+    loadbalancer:
+      sticky-session:
+        enabled: true
     gateway:
       discovery:
         locator:
           enabled: true
           lower-case-service-id: true
+
+      httpclient:
+        websocket:
+          max-frame-payload-length: 65536
 
       default-filters:
         - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
@@ -21,17 +28,19 @@ spring:
           predicates:
             - Path=/api/users/**, /api/auth/**
 
-        - id: chat-service
-          uri: lb://CHAT-SERVICE
-          predicates:
-            - Path=/api/chat/**
+#        - id: chat-service
+#          uri: lb://CHAT-SERVICE
+#          predicates:
+#            - Path=/api/chat/**
 
         - id: chat-ws
-          uri: ws://chat-service:8082
+          uri: lb:ws://CHAT-SERVICE
           predicates:
               - Path=/ws/chat
-          filters:
-            - RemoveRequestHeader=Sec-WebSocket-Protocol
+#          filters:
+#            - PreserveHostHeader
+#          filters:
+#            - RemoveRequestHeader=Sec-WebSocket-Protocol
 
 eureka:
   client:

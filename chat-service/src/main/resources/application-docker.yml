@@ -6,7 +6,7 @@ spring:
     name: chat-service
 
   kafka:
-    bootstrap-servers: localhost:9092
+    bootstrap-servers: kafka:9092
     consumer:
       group-id: chat-service-group
       auto-offset-reset: earliest
@@ -21,7 +21,7 @@ spring:
         spring.json.trusted.packages: "com.paris.common.dto"
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/chatdb
+    url: jdbc:postgresql://postgres:5432/chatdb
     username: postgres
     password: 12345
     driver-class-name: org.postgresql.Driver
@@ -31,12 +31,16 @@ spring:
       ddl-auto: update
     show-sql: true
 
-# Required so WebSockets are allowed through Spring Boot
-#  web:
-#    socket:
-#      enabled: true
+  data:
+    redis:
+      host: redis
+      port: 6379
+  # Required so WebSockets are allowed through Spring Boot
+  #  web:
+  #    socket:
+  #      enabled: true
 
-# ✅ FIX #3 — EXPOSE /ws/chat FOR WEBFLUX WEBSOCKET
+  # ✅ FIX #3 — EXPOSE /ws/chat FOR WEBFLUX WEBSOCKET
   webflux:
     websocket:
       mapping:
@@ -45,7 +49,7 @@ spring:
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka/
+      defaultZone: http://eureka-service:8761/eureka/
 
 management:
   endpoints:
