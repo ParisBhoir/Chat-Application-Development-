@@ -22,7 +22,7 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
 
     List<Message> findByReceiverIdAndStatus(String receiverId, MessageStatus status);
 
-    List<Message> findByStatusAndRetryCountLessThanAndLastAttemptAtBefore(
+    List<Message> findByStatusAndFailedFalseAndRetryCountLessThanAndLastAttemptAtBefore(
             MessageStatus status,
             int retryCount,
             LocalDateTime time

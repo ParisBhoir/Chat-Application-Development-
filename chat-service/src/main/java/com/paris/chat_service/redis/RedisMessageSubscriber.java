@@ -29,15 +29,31 @@ public class RedisMessageSubscriber {
                 .subscribe(msg -> {
                     try {
                         JsonNode node = mapper.readTree(msg);
-                        String receiverId = node.get("receiverId").asText();
-                        log.info(
-                                "Redis message received for user {}",
-                                receiverId
-                        );
-                        sessionRegistry.sendToLocalUser(
-                                receiverId,
-                                msg
-                        );
+                        String targetUserId;
+                        String payload;
+
+                        if (node.has("targetUserId") && node.has("payload")) {
+                            // New format: explicit routing destination
+                            targetUserId = node.get("targetUserId").asText();
+                            payload = node.get("payload").asText();
+                        } else {
+                            // Legacy format: route using receiverId
+                            targetUserId = node.get("receiverId").asText();
+                            payload = msg;
+                        }
+
+                        log.info("Redis message received for target user {}", targetUserId);
+
+                        sessionRegistry.sendToLocalUser(targetUserId, payload);
+//                        String receiverId = node.get("receiverId").asText();
+//                        log.info(
+//                                "Redis message received for user {}",
+//                                receiverId
+//                        );
+//                        sessionRegistry.sendToLocalUser(
+//                                receiverId,
+//                                msg
+//                        );
 //                        sessionRegistry.sendToUser(receiverId, msg);
 
                     } catch (Exception e) {

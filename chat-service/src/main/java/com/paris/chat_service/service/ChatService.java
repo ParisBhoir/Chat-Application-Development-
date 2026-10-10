@@ -87,7 +87,7 @@ public class ChatService {
 
     public List<Message> findMessagesForRetry(LocalDateTime threshold) {
         return messageRepository
-                .findByStatusAndRetryCountLessThanAndLastAttemptAtBefore(
+                .findByStatusAndFailedFalseAndRetryCountLessThanAndLastAttemptAtBefore(
                         MessageStatus.SENT,
                         4,
                         threshold

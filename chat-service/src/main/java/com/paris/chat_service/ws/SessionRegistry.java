@@ -1,5 +1,6 @@
 package com.paris.chat_service.ws;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.paris.chat_service.redis.InstanceIdProvider;
 import com.paris.chat_service.redis.RedisSessionRegistry;
 import lombok.RequiredArgsConstructor;
@@ -10,6 +11,7 @@ import reactor.core.publisher.Mono;
 import com.paris.chat_service.redis.RedisMessagePublisher;
 
 import java.util.Collection;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -23,6 +25,7 @@ public class SessionRegistry {
     // userId -> session
     private final ConcurrentHashMap<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
     private final Set<String> onlineUsers = ConcurrentHashMap.newKeySet();
+    private final ObjectMapper mapper;
 
     public void register(String userId, WebSocketSession session) {
         if (userId == null) return;
@@ -100,15 +103,28 @@ public class SessionRegistry {
                         sendToLocalUser(userId, message);
 
                     } else {
+                        try {
+                            String envelope = mapper.writeValueAsString(
+                                 Map.of(
+                                        "targetUserId", userId,
+                                        "payload", message
+                                )
+                            );
 
-                        // User is on another instance
-                        redisMessagePublisher.publish(message)
+                            redisMessagePublisher.publish(envelope)
                                 .subscribe();
 
-                        log.info(
+                        // User is on another instance
+//                        redisMessagePublisher.publish(message)
+//                                .subscribe();
+
+                            log.info(
                                 "Published message to Redis for user {}",
                                 userId
-                        );
+                            );
+                        } catch (Exception e) {
+                            log.error("Failed to publish Redis message for user {}", userId, e);
+                        }
                     }
                 });
     }
