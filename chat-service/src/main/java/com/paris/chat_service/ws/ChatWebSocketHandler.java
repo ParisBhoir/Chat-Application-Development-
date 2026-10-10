@@ -46,7 +46,19 @@ public class ChatWebSocketHandler implements WebSocketHandler {
         }
 
         sessionRegistry.register(userId, session);
-        redisSessionRegistry.register(userId, instanceIdProvider.getInstanceId()).subscribe();
+//        redisSessionRegistry.register(userId, instanceIdProvider.getInstanceId()).subscribe();
+        redisSessionRegistry.register(
+                userId,
+                instanceIdProvider.getInstanceId(),
+                session.getId()
+        ).subscribe(
+                unused -> {},
+                error -> log.error(
+                        "Failed to register Redis session for user {}",
+                        userId,
+                        error
+                )
+        );
         log.info("Instance ID: {}", instanceIdProvider.getInstanceId());
 
         PresenceEventDTO event = new PresenceEventDTO(
@@ -191,28 +203,52 @@ public class ChatWebSocketHandler implements WebSocketHandler {
         return session.send(outbound) // keeps connection alive
                 .and(inbound)
                 .doFinally(sig -> {
-            sessionRegistry.unregister(userId);
-            redisSessionRegistry.unregister(userId).subscribe();
+            sessionRegistry.unregister(userId, session);
+            redisSessionRegistry.unregister(userId, session.getId())
+                    .subscribe(
+                            removed -> {
+                                if (removed) {
+                                    // Publish OFFLINE presence here.
+                                    PresenceEventDTO offlineEvent  = new PresenceEventDTO(
+                                            "PRESENCE",
+                                            PresenceStatus.OFFLINE,
+                                            userId
+                                    );
 
-            PresenceEventDTO event1 = new PresenceEventDTO(
-                    "PRESENCE",
-                    PresenceStatus.OFFLINE,
-                    userId
-            );
+                                    try {
+                                        String presenceMessage = objectMapper.writeValueAsString(offlineEvent);
 
-            try {
-                String presenceMessage = objectMapper.writeValueAsString(event1);
+                                        redisPresencePublisher.publish(presenceMessage)
+                                                .subscribe(unused -> {},
+                                                        error -> log.error(
+                                                                "Failed to publish OFFLINE presence for user {}",
+                                                                userId,
+                                                                error
+                                                        )
+                                                );
 
-                redisPresencePublisher.publish(presenceMessage)
-                        .subscribe();
+                                    } catch (JsonProcessingException e) {
+                                        log.error("Failed to create OFFLINE presence event", e);
+                                    }
+                                } else {
+                                    log.info(
+                                            "Skipping OFFLINE: user {} has a newer or different Redis session",
+                                            userId
+                                    );
+                                }
+                            },
+                            error -> log.error(
+                                    "Failed to unregister Redis session for user {}",
+                                    userId,
+                                    error
+                            )
+                    );
 
-                log.info("Published OFFLINE presence for user {}", userId);
 
-            } catch (JsonProcessingException e) {
-                log.error("Failed to create OFFLINE presence event", e);
-            }
 
-            log.info("WebSocket disconnected: {}", userId);
+            log.info("WebSocket disconnected: {} | session={}",
+                    userId,
+                    session.getId());
         });
     }
 }

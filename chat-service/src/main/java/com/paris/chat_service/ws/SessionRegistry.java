@@ -35,12 +35,26 @@ public class SessionRegistry {
         log.info("User {} is ONLINE", userId);
     }
 
-    public void unregister(String userId) {
-        if (userId == null) return;
-        sessions.remove(userId);
+    public boolean unregister(String userId, WebSocketSession session) {
+        if (userId == null || session == null) {
+            return false;
+        }
 
-        onlineUsers.remove(userId);
-        log.info("User {} is OFFLINE", userId);
+        // Remove only if this exact session is still the registered session.
+        boolean removed = sessions.remove(userId, session);
+
+        if (removed) {
+            onlineUsers.remove(userId);
+            log.info("User {} is OFFLINE", userId);
+        } else {
+            log.info(
+                    "Ignoring stale disconnect for user {} and session {}",
+                    userId,
+                    session.getId()
+            );
+        }
+
+        return removed;
     }
 
     public WebSocketSession get(String userId) {
