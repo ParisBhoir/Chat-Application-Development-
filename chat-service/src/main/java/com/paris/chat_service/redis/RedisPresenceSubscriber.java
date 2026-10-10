@@ -39,10 +39,6 @@ public class RedisPresenceSubscriber {
                                 msg
                         );
 
-                        // Deliver directly to users connected
-                        // to THIS chat-service instance.
-//                        sessionRegistry.sendToLocalUser(userId, msg);
-
                         sessionRegistry.broadcastExcept(userId, msg);
                     } catch (Exception e) {
                         log.error("Redis presence subscriber error", e);

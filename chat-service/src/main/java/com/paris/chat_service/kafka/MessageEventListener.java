@@ -41,72 +41,12 @@ public class MessageEventListener {
                 return;
             }
 
-            /*WebSocketSession session = sessionRegistry.get(dto.getReceiverId());
-            if (session == null) {
-                log.info("User not connected to THIS instance, skipping...");
-                return;
-            }
-            if (session != null && session.isOpen()) {
-
-                String json = mapper.writeValueAsString(dto);
-
-                session.send(Mono.just(session.textMessage(json)))
-//                        .doOnSuccess(unused -> {
-                        .then(Mono.fromRunnable(() -> {
-                            log.info("Message delivered to user {}", dto.getReceiverId());
-
-                            // ✅ mark delivered AFTER send attempt
-                            chatService.updateMessageStatus(dto.getId(), MessageStatus.SENT);
-
-                            try {
-                                MessageStatusEventDTO statusEvent = new MessageStatusEventDTO(
-                                        "STATUS",
-                                        dto.getId(),
-                                        dto.getSenderId(),
-                                        dto.getReceiverId(),
-                                        MessageStatus.SENT
-                                );
-
-                                sessionRegistry.sendToUser(
-                                        dto.getSenderId(),
-                                        mapper.writeValueAsString(statusEvent)
-                                );
-                            } catch (Exception e) {
-                                log.error("Failed to notify sender about delivery", e);
-                            }
-
-                        }))
-                        .doOnError(err -> log.error("WebSocket send failed", err))
-                        .subscribe();
-//                        .subscribe(null,
-//                                err -> log.error("Error sending WebSocket message", err));
-
-
-            } else {
-                log.info("User {} is offline. Not delivering message now.", dto.getReceiverId());
-            }
-
-        } catch (Exception ex) {
-            log.error("Failed to handle Kafka event", ex);
-        }*/
-
             /*
              * Convert message to JSON.
              */
             String json = mapper.writeValueAsString(dto);
 
-            /*
-             * Redis-aware WebSocket routing.
-             *
-             * If receiver is connected to THIS instance:
-             *     -> send directly to local WebSocket.
-             *
-             * If receiver is connected to ANOTHER instance:
-             *     -> publish to Redis.
-             *     -> target instance receives it.
-             *     -> target instance sends to local WebSocket.
-             */
-            sessionRegistry.sendToUser(
+           sessionRegistry.sendToUser(
                     dto.getReceiverId(),
                     json
             );

@@ -45,16 +45,6 @@ public class RedisMessageSubscriber {
                         log.info("Redis message received for target user {}", targetUserId);
 
                         sessionRegistry.sendToLocalUser(targetUserId, payload);
-//                        String receiverId = node.get("receiverId").asText();
-//                        log.info(
-//                                "Redis message received for user {}",
-//                                receiverId
-//                        );
-//                        sessionRegistry.sendToLocalUser(
-//                                receiverId,
-//                                msg
-//                        );
-//                        sessionRegistry.sendToUser(receiverId, msg);
 
                     } catch (Exception e) {
                         log.error("Redis subscriber error", e);

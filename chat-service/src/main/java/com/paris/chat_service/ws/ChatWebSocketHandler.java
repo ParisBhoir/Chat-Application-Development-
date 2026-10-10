@@ -48,17 +48,7 @@ public class ChatWebSocketHandler implements WebSocketHandler {
         sessionRegistry.register(userId, session);
         redisSessionRegistry.register(userId, instanceIdProvider.getInstanceId()).subscribe();
         log.info("Instance ID: {}", instanceIdProvider.getInstanceId());
-        /*PresenceEventDTO event = new PresenceEventDTO(
-                "PRESENCE",
-                PresenceStatus.ONLINE,
-                userId
-        );
 
-        try {
-            sessionRegistry.broadcast(objectMapper.writeValueAsString(event));
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }*/
         PresenceEventDTO event = new PresenceEventDTO(
                 "PRESENCE",
                 PresenceStatus.ONLINE,
@@ -109,38 +99,7 @@ public class ChatWebSocketHandler implements WebSocketHandler {
                 log.error("Failed to deliver offline message", e);
             }
         });
-        /*Mono<Void> outboundPending = Mono.defer(() -> {
-            List<Message> pendingMessages = chatService.getUndeliveredMessages(userId);
 
-            log.info("Found {} undelivered messages for {}", pendingMessages.size(), userId);
-
-            return session.send(
-                    Flux.fromIterable(pendingMessages)
-                            .map(msg -> {
-                                try {
-                                    // ✅ mark delivered
-                                    chatService.updateMessageStatus(msg.getId(), MessageStatus.SENT);
-
-                                    // ✅ notify sender
-                                    MessageStatusEventDTO statusEvent = new MessageStatusEventDTO(
-                                            "STATUS",
-                                            msg.getId(),
-                                            msg.getSenderId(),
-                                            msg.getReceiverId(),
-                                            MessageStatus.SENT
-                                    );
-
-                                    sessionRegistry.sendToUser(
-                                            msg.getSenderId(),
-                                            objectMapper.writeValueAsString(statusEvent)
-                                    );
-                                    return session.textMessage(objectMapper.writeValueAsString(msg));
-                                } catch (Exception e) {
-                                    throw new RuntimeException(e);
-                                }
-                            })
-            );
-        });*/
         Flux<WebSocketMessage> outbound = Flux.never();
         Mono<Void> inbound = session.receive()
                 .flatMap(msg -> {
@@ -221,11 +180,6 @@ public class ChatWebSocketHandler implements WebSocketHandler {
                             default:
                                 log.warn("Unknown WS event type: {}", type);
                         }
-//                        Message m = objectMapper.readValue(payload, Message.class);
-//                        // ensure sender is set by gateway header, ignore client's spoofed sender
-//                        m.setSenderId(userId);
-//                        log.info("WS message received from {} → {}", userId, m.getReceiverId());
-//                        chatService.sendMessage(m);
                     } catch (Exception e) {
                         log.error("Failed to parse incoming WS message", e);
                     }
@@ -236,22 +190,9 @@ public class ChatWebSocketHandler implements WebSocketHandler {
         // cleanup on termination
         return session.send(outbound) // keeps connection alive
                 .and(inbound)
-//        inbound.doFinally(sig -> {
-//        return Mono.when(inbound, outboundPending)
                 .doFinally(sig -> {
             sessionRegistry.unregister(userId);
             redisSessionRegistry.unregister(userId).subscribe();
-            /*PresenceEventDTO event1 = new PresenceEventDTO(
-                    "PRESENCE",
-                    PresenceStatus.OFFLINE,
-                    userId
-            );
-
-            try {
-                sessionRegistry.broadcast(objectMapper.writeValueAsString(event1));
-            } catch (JsonProcessingException e) {
-                throw new RuntimeException(e);
-            }*/
 
             PresenceEventDTO event1 = new PresenceEventDTO(
                     "PRESENCE",

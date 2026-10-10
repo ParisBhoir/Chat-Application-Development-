@@ -17,12 +17,6 @@ public class MessageProducer {
     private final KafkaTemplate<String, MessageDTO> kafkaTemplate;
     private static final String TOPIC = "message-events";
 
-//    public void sendMessageEvent(MessageDTO message) {
-//        log.info("Publishing message event to Kafka: {}", message);
-//        kafkaTemplate.send(TOPIC, message);
-//        System.out.println("📤 Sent message event to Kafka: " + message.getContent());
-//    }
-
     public CompletableFuture<SendResult<String, MessageDTO>> sendMessageEvent(MessageDTO message) {
         log.info("Publishing message event to Kafka: {}", message);
 

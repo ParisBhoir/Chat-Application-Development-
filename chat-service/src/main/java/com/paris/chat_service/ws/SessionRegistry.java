@@ -62,26 +62,6 @@ public class SessionRegistry {
         });
     }
 
-    /*public void sendToUser(String userId, String message) {
-
-        String currentInstance = instanceIdProvider.getInstanceId();
-        String instance = redisSessionRegistry.getInstance(userId).toString();
-        if (instance == currentInstance) {
-            WebSocketSession session = sessions.get(userId);
-            if (session != null && session.isOpen()) {
-                session.send(Mono.just(session.textMessage(message)))
-                        .subscribe();
-            }
-        } else {
-            redisMessagePublisher.publish(message);
-        }
-        *//*WebSocketSession session = sessions.get(userId);
-        if (session != null && session.isOpen()) {
-            session.send(Mono.just(session.textMessage(message)))
-                    .subscribe();
-        }*//*
-    }*/
-
     public void sendToUser(String userId, String message) {
 
         String currentInstance = instanceIdProvider.getInstanceId();
@@ -113,10 +93,6 @@ public class SessionRegistry {
 
                             redisMessagePublisher.publish(envelope)
                                 .subscribe();
-
-                        // User is on another instance
-//                        redisMessagePublisher.publish(message)
-//                                .subscribe();
 
                             log.info(
                                 "Published message to Redis for user {}",
