@@ -3,7 +3,9 @@ package com.paris.chat_service.repository;
 import com.paris.chat_service.model.Message;
 import com.paris.common.dto.MessageStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -25,5 +27,14 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
             int retryCount,
             LocalDateTime time
     );
+
+    @Modifying
+    @Query("""
+       UPDATE Message m
+       SET m.kafkaEventProcessed = true
+       WHERE m.id = :messageId
+       AND m.kafkaEventProcessed = false
+       """)
+    int markKafkaEventProcessed(@Param("messageId") Long messageId);
 }
 

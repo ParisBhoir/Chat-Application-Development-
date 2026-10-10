@@ -4,7 +4,10 @@ import com.paris.common.dto.MessageDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Service;
+
+import java.util.concurrent.CompletableFuture;
 
 @Slf4j
 @Service
@@ -14,9 +17,15 @@ public class MessageProducer {
     private final KafkaTemplate<String, MessageDTO> kafkaTemplate;
     private static final String TOPIC = "message-events";
 
-    public void sendMessageEvent(MessageDTO message) {
+//    public void sendMessageEvent(MessageDTO message) {
+//        log.info("Publishing message event to Kafka: {}", message);
+//        kafkaTemplate.send(TOPIC, message);
+//        System.out.println("📤 Sent message event to Kafka: " + message.getContent());
+//    }
+
+    public CompletableFuture<SendResult<String, MessageDTO>> sendMessageEvent(MessageDTO message) {
         log.info("Publishing message event to Kafka: {}", message);
-        kafkaTemplate.send(TOPIC, message);
-        System.out.println("📤 Sent message event to Kafka: " + message.getContent());
+
+        return kafkaTemplate.send(TOPIC, message);
     }
 }

@@ -30,7 +30,18 @@ public class MessageEventListener {
         try {
             log.info("Received Kafka message event: {}", dto);
 
-            WebSocketSession session = sessionRegistry.get(dto.getReceiverId());
+            boolean firstProcessing =
+                    chatService.markKafkaEventProcessed(dto.getId());
+
+            if (!firstProcessing) {
+                log.info(
+                        "Duplicate Kafka event ignored | messageId={}",
+                        dto.getId()
+                );
+                return;
+            }
+
+            /*WebSocketSession session = sessionRegistry.get(dto.getReceiverId());
             if (session == null) {
                 log.info("User not connected to THIS instance, skipping...");
                 return;
@@ -77,6 +88,41 @@ public class MessageEventListener {
 
         } catch (Exception ex) {
             log.error("Failed to handle Kafka event", ex);
+        }*/
+
+            /*
+             * Convert message to JSON.
+             */
+            String json = mapper.writeValueAsString(dto);
+
+            /*
+             * Redis-aware WebSocket routing.
+             *
+             * If receiver is connected to THIS instance:
+             *     -> send directly to local WebSocket.
+             *
+             * If receiver is connected to ANOTHER instance:
+             *     -> publish to Redis.
+             *     -> target instance receives it.
+             *     -> target instance sends to local WebSocket.
+             */
+            sessionRegistry.sendToUser(
+                    dto.getReceiverId(),
+                    json
+            );
+
+            log.info(
+                    "Message routed to receiver {} | messageId={}",
+                    dto.getReceiverId(),
+                    dto.getId()
+            );
+
+        } catch (Exception ex) {
+            log.error(
+                    "Failed to handle Kafka event | messageId={}",
+                    dto.getId(),
+                    ex
+            );
         }
     }
 }

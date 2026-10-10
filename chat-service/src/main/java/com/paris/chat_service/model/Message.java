@@ -28,4 +28,6 @@ public class Message {
     private int retryCount = 0;
     private LocalDateTime lastAttemptAt;
     private boolean failed;
+
+    private boolean kafkaEventProcessed = false;
 }

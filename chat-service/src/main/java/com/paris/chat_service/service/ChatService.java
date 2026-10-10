@@ -7,6 +7,7 @@ import com.paris.chat_service.repository.MessageRepository;
 import com.paris.common.dto.MessageStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -32,7 +33,38 @@ public class ChatService {
                 .status(saved.getStatus())
                 .build();
         // publish to Kafka
-        messageProducer.sendMessageEvent(dto);
+        messageProducer.sendMessageEvent(dto)
+                .whenComplete((result, ex) -> {
+
+                    if (ex == null) {
+                        try {
+                            updateMessageStatus(
+                                    saved.getId(),
+                                    MessageStatus.SENT
+                            );
+
+                            System.out.println(
+                                    "✅ Message " + saved.getId()
+                                            + " successfully published to Kafka"
+                            );
+
+                        } catch (Exception e) {
+                            System.err.println(
+                                    "❌ Failed to update SENT status for message "
+                                            + saved.getId()
+                            );
+                            e.printStackTrace();
+                        }
+
+                    } else {
+                        System.err.println(
+                                "❌ Failed to publish message "
+                                        + saved.getId()
+                                        + " to Kafka"
+                        );
+                        ex.printStackTrace();
+                    }
+                });
 
         return saved;
     }
@@ -73,5 +105,10 @@ public class ChatService {
     public void moveToDLQ(Message msg) {
         msg.setFailed(true);
         messageRepository.save(msg);
+    }
+
+    @Transactional
+    public boolean markKafkaEventProcessed(Long messageId) {
+        return messageRepository.markKafkaEventProcessed(messageId) > 0;
     }
 }
